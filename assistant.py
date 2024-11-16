@@ -18,6 +18,11 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 import psutil
+import cv2
+import random
+import string
+import pycaw.pycaw as pycaw
+import pyautogui
 
 # Initialize text-to-speech engine
 engine = pyttsx3.init('sapi5')
@@ -31,7 +36,7 @@ def set_voice(voice_id):
 set_voice(1)
 
 # API credentials (manually input your credentials)
-GEMINI_API_KEY = "AIzaSyBU1NrPzjlh2z5CSzRx2ENmGnINj8N6nfQ"  # Replace with your actual API key
+GEMINI_API_KEY = "gemini_api_key"  # Replace with your actual API key
 
 # Configure Gemini API
 genai.configure(api_key=GEMINI_API_KEY)
@@ -104,8 +109,8 @@ def open_application(app_name):
     speak(f"Could not find an application named {app_name} in the Start Menu directories.")
 
 # Play Spotify songs
-SPOTIFY_CLIENT_ID = 'f33a786d07c142c1be0e786f3c21680f'  # Replace with your Client ID
-SPOTIFY_CLIENT_SECRET = '64c3a23e8bb44be49a5bcd13f9b9aac9'  # Replace with your Client Secret
+SPOTIFY_CLIENT_ID = 'spotify_client_id'  # Replace with your Client ID
+SPOTIFY_CLIENT_SECRET = 'spotify_client_secret'  # Replace with your Client Secret
 SPOTIFY_REDIRECT_URI = 'http://localhost:8888/callback'  # Replace with your Redirect URI
 
 def get_spotify_oauth_object():
@@ -175,6 +180,24 @@ def change_volume(command):
         speak("Volume unmuted.")
         return "Volume unmuted."
 
+# Function to control media
+def control_media(command):
+    devices = pycaw.PyCAW().audio_controllers()
+    for device in devices:
+        if device.state == pycaw.AudioDeviceState.active:
+            player = device.audio_session
+            if player:
+                volume_control = player.SimpleAudioVolume
+                if command == "play/pause":
+                    volume_control.Volume = volume_control.Volume
+                elif command == "next_track":
+                    player.VolumeControl.Volume = 0
+                    player.VolumeControl.Volume = 1
+                elif command == "previous_track":
+                    player.VolumeControl.Volume = 0
+                    player.VolumeControl.Volume = 1
+                break
+
 # Function to close applications
 def close_application(app_name):
     for proc in psutil.process_iter(['name']):
@@ -194,6 +217,144 @@ def delete_current_desktop():
     subprocess.run('powershell.exe Remove-Desktop', shell=True)
     speak("Current desktop deleted.")
 
+# Function to generate a random name
+def generate_random_name(length=10):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))
+
+# Function to capture an image from the webcam and save it with a random name
+def capture_image_with_random_name():
+    # Initialize the webcam
+    cap = cv2.VideoCapture(0)
+
+    # Check if the webcam is opened correctly
+    if not cap.isOpened():
+        speak("Error opening video capture device")
+        return "Error opening video capture device"
+
+    # Read a frame from the webcam
+    ret, frame = cap.read()
+
+    # Check if the frame was captured successfully
+    if not ret:
+        speak("Error capturing frame")
+        return "Error capturing frame"
+
+    # Generate a random name for the image
+    random_name = generate_random_name()
+
+    # Save the captured frame with the random name
+    cv2.imwrite(f'{random_name}.jpg', frame)
+
+    # Display the captured frame
+    cv2.imshow('frame', frame)
+
+    # Wait for 2 seconds
+    cv2.waitKey(2000)
+
+    # Release the capture and close all windows
+    cap.release()
+    cv2.destroyAllWindows()
+
+    speak(f"Image captured and saved as {random_name}.jpg")
+    return f"Image captured and saved as {random_name}.jpg"
+
+# Function to record a video from the webcam and save it with a random name
+def record_video_with_random_name():
+    global cap, out, recording
+    recording = True
+
+    # Initialize the video capture object
+    cap = cv2.VideoCapture(0)
+
+    # Check if the webcam is opened correctly
+    if not cap.isOpened():
+        speak("Error opening video capture device")
+        return "Error opening video capture device"
+
+    # Generate a random name for the video file
+    random_name = generate_random_name()
+
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(f'{random_name}.avi', fourcc, 20.0, (640, 480))
+
+    speak("Recording video. Press Q to stop.")
+    while recording:
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+
+        # If frame is read correctly, write the frame into the output file
+        if ret:
+            out.write(frame)
+
+            # Display the resulting frame
+            cv2.imshow('frame', frame)
+
+            # Press Q on keyboard to exit
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                stop_recording()
+                break
+
+    return f"Video recorded and saved as {random_name}.avi"
+
+# Function to stop recording
+def stop_recording():
+    global cap, out, recording
+    recording = False
+
+    # Release the capture and write objects
+    cap.release()
+    out.release()
+
+    # Close all windows
+    cv2.destroyAllWindows()
+
+    speak("Recording stopped and video saved.")
+    return "Recording stopped and video saved."
+
+# Function to perform hotkey shortcuts
+def perform_hotkey(command):
+    if 'close all windows' in command:
+        pyautogui.hotkey('alt', 'f4')
+        speak("All windows closed.")
+        return "All windows closed."
+    elif 'window switch right' in command:
+        pyautogui.hotkey('alt', 'tab')
+        speak("Switched to the next window.")
+        return "Switched to the next window."
+    elif 'window switch left' in command:
+        pyautogui.hotkey('alt', 'shift', 'tab')
+        speak("Switched to the previous window.")
+        return "Switched to the previous window."
+    elif 'desktop switch right' in command:
+        pyautogui.hotkey('ctrl', 'win', 'right')
+        speak("Switched to the next desktop.")
+        return "Switched to the next desktop."
+    elif 'desktop switch left' in command:
+        pyautogui.hotkey('ctrl', 'win', 'left')
+        speak("Switched to the previous desktop.")
+        return "Switched to the previous desktop."
+    elif 'minimise all windows' in command:
+        pyautogui.hotkey('win', 'm')
+        speak("All windows minimized.")
+        return "All windows minimized."
+    elif 'play pause' in command:
+        pyautogui.hotkey('playpause')
+        speak("Play/Pause toggled.")
+        return "Play/Pause toggled."
+    elif 'next track' in command:
+        pyautogui.hotkey('nexttrack')
+        speak("Next track.")
+        return "Next track."
+    elif 'previous track' in command:
+        pyautogui.hotkey('prevtrack')
+        speak("Previous track.")
+        return "Previous track."
+    else:
+        speak("Command not recognized.")
+        return "Command not recognized."
+
 # Process commands
 def process_audio(command):
     if 'wikipedia' in command:
@@ -202,6 +363,12 @@ def process_audio(command):
         result = wikipedia.summary(command, sentences=2)
         speak(result)
         return result
+    elif 'capture image' in command:
+        return capture_image_with_random_name()
+    elif 'record video' in command:
+        return record_video_with_random_name()
+    elif 'stop recording' in command:
+        return stop_recording()
     elif 'joke' in command:
         joke = pyjokes.get_joke()
         speak(joke)
@@ -210,19 +377,6 @@ def process_audio(command):
         current_time = datetime.datetime.now().strftime("%H:%M:%S")
         speak(f"The time is {current_time}")
         return f"The time is {current_time}"
-    elif 'exit' in command:
-        speak("Goodbye!")
-        exit()
-    elif 'open' in command:
-        app_name = command.replace("open", "").strip()
-        open_application(app_name)
-        return f"Opening {app_name}"
-    elif 'browse' in command:
-        website = command.replace("browse", "").strip()
-        if not website.startswith("http://") and not website.startswith("https://"):
-            website = f"http://{website}"
-        webbrowser.open(website)
-        return f"Opening website {website}"
     elif 'play' in command and 'by' in command:
         song = command.replace("play", "").replace("by", "").strip()
         details = song.split(" ")
@@ -239,23 +393,28 @@ def process_audio(command):
         else:
             speak(f"Could not find {song_name} on Spotify")
             return f"Could not find { song_name} on Spotify"
-    elif 'increase volume' in command or 'decrease volume' in command or 'mute' in command or 'unmute' in command or 'set volume to' in command:
-        change_volume(command)
-        return f"Processed volume command: {command}"
-    elif 'close' in command:
-        app_name = command.replace("close", "").strip()
-        close_application(app_name)
-        return f"Closing {app_name}"
-    elif 'create new desktop' in command:
-        create_new_desktop()
-        return "Created a new desktop."
-    elif 'delete current desktop' in command:
-        delete_current_desktop()
-        return "Deleted the current desktop."
+    elif 'exit' in command:
+        speak("Goodbye!")
+        exit()
+    elif 'open' in command:
+        app_name = command.replace("open", "").strip()
+        open_application(app_name)
+        return f"Opening {app_name}"
+    elif 'browse' in command:
+        website = command.replace("browse", "").strip()
+        if not website.startswith("http://") and not website.startswith("https://"):
+            website = f"http://{website}"
+        webbrowser.open(website)
+        return f"Opening website {website}"
+    elif 'play pause' in command or 'next track' in command or 'previous track' in command:
+        return perform_hotkey(command)
+    elif 'set volume to' in command or 'increase volume' in command or 'decrease volume' in command or 'mute' in command or 'unmute' in command:
+        return change_volume(command)
+    elif 'close all windows' in command or 'window switch right' in command or 'window switch left' in command or 'desktop switch right' in command or 'desktop switch left' in command or 'minimise all windows' in command:
+        return perform_hotkey(command)
     else:
-        response = call_apis(command)
-        speak(response)
-        return response
+        speak("Command not recognized.")
+        return "Command not recognized."
 
 # GUI and main loop
 def start_assistant():
