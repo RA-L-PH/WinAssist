@@ -19,8 +19,8 @@ The assistant can be controlled using the following voice commands:
 - `wikipedia <search term>`: Search Wikipedia for the given search term
 - `play <song name> by <artist name>`: Play the given song on Spotify
 - `capture image`: Capture an image from the webcam and save it with a random name
-- `record video`: Press Q
-- `stop recording`: Stop recording the video
+- `record video`: Starts Recording Video and save it as a random name.
+- `stop recording`: Press Q
 - `joke`: Tell a joke
 - `time`: Get the current time
 - `exit`: Exit the assistant
